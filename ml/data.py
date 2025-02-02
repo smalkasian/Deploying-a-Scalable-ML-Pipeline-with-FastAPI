@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 
-
 def process_data(
     X, categorical_features=[], label=None, training=True, encoder=None, lb=None
 ):
@@ -44,28 +43,34 @@ def process_data(
         passed in.
     """
 
+    # Extract label if exists
     if label is not None:
         y = X[label]
         X = X.drop([label], axis=1)
     else:
         y = np.array([])
 
+    # Extract categorical and continuous features
     X_categorical = X[categorical_features].values
-    X_continuous = X.drop(*[categorical_features], axis=1)
+    X_continuous = X.drop(columns=categorical_features)
 
-    if training is True:
+    # Handling training or inference mode
+    if training:
         encoder = OneHotEncoder(sparse_output=False, handle_unknown="ignore")
         lb = LabelBinarizer()
+
+        # Fit the encoder and label binarizer
         X_categorical = encoder.fit_transform(X_categorical)
         y = lb.fit_transform(y.values).ravel()
     else:
+        # If not training, transform using the passed encoders
         X_categorical = encoder.transform(X_categorical)
         try:
             y = lb.transform(y.values).ravel()
-        # Catch the case where y is None because we're doing inference.
         except AttributeError:
-            pass
+            pass  # In case y is None during inference, skip label transformation
 
+    # Concatenate the processed continuous and categorical features
     X = np.concatenate([X_continuous, X_categorical], axis=1)
     return X, y, encoder, lb
 

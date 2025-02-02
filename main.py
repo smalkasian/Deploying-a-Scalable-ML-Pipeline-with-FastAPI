@@ -1,13 +1,51 @@
-import os
+#------------------------------------------------------------------------------------
+# Developed by CSamuel Malkasian
+#------------------------------------------------------------------------------------
+# Legal Notice: Distribution Not Authorized. Please Fork Instead.
+#------------------------------------------------------------------------------------
 
+CURRENT_VERSION = "1.0"
+CHANGES = """
+
+"""
+
+#------------------------------------NOTES-----------------------------------------
+
+
+# Error Codes: 
+# 01CSRF - Failed CSRF screen (probably didn't add it - if imported)
+#------------------------------------IMPORTS-----------------------------------------
+
+import os
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-
 from ml.data import apply_label, process_data
 from ml.model import inference, load_model
 
-# DO NOT MODIFY
+# Errors and Logging
+import logging
+import traceback
+from pathlib import Path
+
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+#--------------------------------------VAR DECS--------------------------------------
+# Initialize FastAPI application
+app =  FastAPI()
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+encoder_path = None # TODO: enter the path for the saved encoder 
+data_path = "Deploying-a-Scalable-ML-Pipeline-with-FastAPI/data/census.csv"
+
+encoder = load_model(encoder_path)
+model = load_model(data_path)
+
+#-------------------------------CLASSES/DB MODELS-------------------------------- # DO NOT MODIFY
 class Data(BaseModel):
     age: int = Field(..., example=37)
     workclass: str = Field(..., example="Private")
@@ -26,20 +64,13 @@ class Data(BaseModel):
     hours_per_week: int = Field(..., example=40, alias="hours-per-week")
     native_country: str = Field(..., example="United-States", alias="native-country")
 
-path = None # TODO: enter the path for the saved encoder 
-encoder = load_model(path)
-
-path = None # TODO: enter the path for the saved model 
-model = load_model(path)
-
-# TODO: create a RESTful API using FastAPI
-app = None # your code here
+#------------------------------------API ROUTES-----------------------------------
 
 # TODO: create a GET on the root giving a welcome message
 @app.get("/")
 async def get_root():
     """ Say hello!"""
-    # your code here
+    return {"FatAPI Root. Welcome!"}
     pass
 
 
@@ -72,3 +103,40 @@ async def post_inference(data: Data):
     )
     _inference = None # your code here to predict the result using data_processed
     return {"result": apply_label(_inference)}
+
+# Example POST endpoint for model inference
+@app.post("/data/")
+async def post_inference(data: Data):
+    data_dict = data.dict()
+    
+    # Clean up the dictionary to convert it into a pandas DataFrame
+    data_cleaned = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
+    data_df = pd.DataFrame.from_dict(data_cleaned)
+
+    # Define categorical features
+    cat_features = [
+        "workclass",
+        "education",
+        "marital-status",
+        "occupation",
+        "relationship",
+        "race",
+        "sex",
+        "native-country",
+    ]
+
+    # Preprocess the data
+    data_processed, _, _, _ = process_data(
+        data_df, 
+        categorical_features=cat_features, 
+        label=None, 
+        training=False
+    )
+    
+    # Run inference on processed data
+    prediction = inference(model, data_processed)
+    
+    # Apply the label
+    result = apply_label(prediction)
+    
+    return {"result": result}
