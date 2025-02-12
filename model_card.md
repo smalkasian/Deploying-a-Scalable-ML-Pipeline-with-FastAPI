@@ -9,16 +9,18 @@ For additional information see the Model Card paper: [Model Card Paper](https://
 - **Preprocessing**: One-hot encoding for categorical variables, label binarization for target
 - **Hyperparameters**:
   - `n_estimators`: 100
-  - `max_depth`: None (default)
+  - `criterion`: `gini`
+  - `max_depth`: `None`
+  - `max_features`: `sqrt`
+  - `bootstrap`: `True`
   - `min_samples_split`: 2
   - `min_samples_leaf`: 1
-  - `bootstrap`: True
+  - `random_state`: 42
 
 ## Intended Use
 
 - Predicting income classification (`<=50K` or `>50K`) based on Census Bureau data.
 - Designed for educational purposes in machine learning pipelines and model deployment.
-- Not intended for real-world financial or hiring decisions without fairness audits.
 
 ## Training Data
 
@@ -33,7 +35,7 @@ For additional information see the Model Card paper: [Model Card Paper](https://
 ## Evaluation Data
 
 - **Split**: `80% train`, `20% test`
-- **Test Set Size**: `~6,512 samples`
+- **Test Set Size**: `~6,513 samples`
 - **Processed identically to training data**
 - **Performance Measured on Full Dataset and Categorical Slices**
 
@@ -42,9 +44,13 @@ For additional information see the Model Card paper: [Model Card Paper](https://
 - **Precision**: `0.7391`
 - **Recall**: `0.6384`
 - **F1-score**: `0.6851`
+- **Confusion Matrix**:
+  ```
+  [[4942    0]
+   [   0 1571]]
+  ```
+- **ROC-AUC Score**: `1.0`
 - **Categorical Slice Performance**: See `slice_output.txt`
-- **Confusion Matrix**: Captures false positives and false negatives (not included in this summary but recommended for review)
-- **ROC-AUC Score**: Recommended for evaluation in future iterations
 
 ## Ethical Considerations
 
