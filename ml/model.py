@@ -2,6 +2,8 @@ import pickle
 from sklearn.metrics import fbeta_score, precision_score, recall_score
 from ml.data import process_data
 from sklearn.ensemble import RandomForestClassifier
+import numpy as np
+
 
 def train_model(X_train, y_train):
     """
@@ -60,21 +62,13 @@ def inference(model, X):
     preds = model.predict(X)
     return preds
 
-def save_model(model, path):
-    """ Serializes model to a file.
-
-    Inputs
-    ------
-    model
-        Trained machine learning model or OneHotEncoder.
-    path : str
-        Path to save pickle file.
-    """
+def save_model(model, path="models/model.pkl"):
+    """ Serializes model to a file. """
     with open(path, 'wb') as f:
         pickle.dump(model, f)
 
-def load_model(path):
-    """ Loads pickle file from `path` and returns it."""
+def load_model(path="models/model.pkl"):
+    """ Loads pickle file from `path` and returns it. """
     with open(path, 'rb') as f:
         model = pickle.load(f)
     return model
@@ -114,6 +108,9 @@ def performance_on_categorical_slice(
     """
     # Slice the data based on the specified column and value
     data_slice = data[data[column_name] == slice_value]
+
+    if data_slice.empty: # Added for edge cases
+        return None, None, None  # Return None values to indicate missing data
 
     # Process the sliced data (make sure to set `training=False`)
     X_slice, y_slice, _, _ = process_data(

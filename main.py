@@ -6,13 +6,9 @@
 
 CURRENT_VERSION = "1.0"
 CHANGES = """
-
 """
 
-#------------------------------------NOTES-----------------------------------------
-
 #------------------------------------IMPORTS-----------------------------------------
-
 import os
 import pandas as pd
 from fastapi import FastAPI
@@ -22,27 +18,25 @@ from ml.model import inference, load_model
 
 # Errors and Logging
 import logging
-import traceback
 from pathlib import Path
-
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-#--------------------------------------VAR DECS--------------------------------------
+#--------------------------------------INITIALIZE--------------------------------------
 # Initialize FastAPI application
-app =  FastAPI()
+app = FastAPI()
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
+encoder_path = os.path.join(base_dir, "model/encoder.pkl") 
+model_path = os.path.join(base_dir, "model/model.pkl")
 
-encoder_path = None # TODO: enter the path for the saved encoder 
-data_path = "Deploying-a-Scalable-ML-Pipeline-with-FastAPI/data/census.csv"
-
+# Load model and encoder
 encoder = load_model(encoder_path)
-model = load_model(data_path)
+model = load_model(model_path)
 
-#-------------------------------CLASSES/DB MODELS-------------------------------- # DO NOT MODIFY
+#----------------------------------REQUEST MODEL-------------------------------- #
 class Data(BaseModel):
     age: int = Field(..., example=37)
     workclass: str = Field(..., example="Private")
@@ -63,52 +57,27 @@ class Data(BaseModel):
 
 #------------------------------------API ROUTES-----------------------------------
 
-# TODO: create a GET on the root giving a welcome message
+# Welcome endpoint
 @app.get("/")
 async def get_root():
-    """ Say hello!"""
-    return {"FatAPI Root. Welcome!"}
-    pass
+    """ Say hello! """
+    return {"message": "FastAPI Root. Welcome!"}
 
-
-# TODO: create a POST on a different path that does model inference
-@app.post("/data/")
+# Model inference endpoint
+@app.post("/predict")
 async def post_inference(data: Data):
-    # DO NOT MODIFY: turn the Pydantic model into a dict.
-    data_dict = data.dict()
-    # DO NOT MODIFY: clean up the dict to turn it into a Pandas DataFrame.
-    # The data has names with hyphens and Python does not allow those as variable names.
-    # Here it uses the functionality of FastAPI/Pydantic/etc to deal with this.
-    data = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
-    data = pd.DataFrame.from_dict(data)
-
-    cat_features = [
-        "workclass",
-        "education",
-        "marital-status",
-        "occupation",
-        "relationship",
-        "race",
-        "sex",
-        "native-country",
-    ]
-    data_processed, _, _, _ = process_data(
-        # your code here
-        # use data as data input
-        # use training = False
-        # do not need to pass lb as input
-    )
-    _inference = None # your code here to predict the result using data_processed
-    return {"result": apply_label(_inference)}
-
-# Example POST endpoint for model inference
-@app.post("/data/")
-async def post_inference(data: Data):
+    """ Runs model inference on input data """
+    
+    # Convert Pydantic model to dictionary
     data_dict = data.dict()
     
-    # Clean up the dictionary to convert it into a pandas DataFrame
-    data_cleaned = {k.replace("_", "-"): [v] for k, v in data_dict.items()}
-    data_df = pd.DataFrame.from_dict(data_cleaned)
+    # Convert dict to Pandas DataFrame
+    data_df = pd.DataFrame([data_dict])
+
+    data_df.rename(columns={
+        "marital_status": "marital-status",
+        "native_country": "native-country"
+        }, inplace=True)
 
     # Define categorical features
     cat_features = [
@@ -122,18 +91,19 @@ async def post_inference(data: Data):
         "native-country",
     ]
 
-    # Preprocess the data
+    # Preprocess input data using the loaded encoder
     data_processed, _, _, _ = process_data(
         data_df, 
         categorical_features=cat_features, 
         label=None, 
-        training=False
+        training=False,
+        encoder=encoder
     )
     
-    # Run inference on processed data
+    # Run inference
     prediction = inference(model, data_processed)
     
-    # Apply the label
+    # Convert prediction to label
     result = apply_label(prediction)
     
     return {"result": result}
